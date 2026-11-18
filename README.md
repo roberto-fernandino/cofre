@@ -15,6 +15,10 @@ Drop a file → touch Touch ID → done. Native macOS, 100% offline, ~1.5 GB/s.
 ![Dependencies](https://img.shields.io/badge/dependencies-0-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
+### [⬇️ Download Cofre.dmg](https://github.com/roberto-fernandino/cofre/releases/latest/download/Cofre.dmg)
+
+<sub>macOS 14+ · Apple Silicon & Intel · ~400 KB</sub>
+
 <img src="docs/screenshot.png" width="420" alt="Cofre window">
 
 </div>
@@ -39,9 +43,12 @@ Most file encryption tools ask you to make up a password, type it every time, an
 
 ## Install
 
-The fastest way: download **Cofre.zip** from [Releases](https://github.com/roberto-fernandino/cofre/releases), unzip it and move it to Applications.
-
-> The app is not notarized. The first time you open it, right-click it and choose **Open**, or go to **System Settings → Privacy & Security → Open Anyway**.
+1. **[Download Cofre.dmg](https://github.com/roberto-fernandino/cofre/releases/latest/download/Cofre.dmg)**
+2. Open it and drag **Cofre** into **Applications**.
+3. The app isn't notarized by Apple yet, so macOS blocks it on first launch. Open it once, then go to **System Settings → Privacy & Security** and click **Open Anyway**. You can also run this in Terminal:
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/Cofre.app
+   ```
 
 You can also build it yourself in about 30 seconds. All you need is Xcode or the Command Line Tools:
 
@@ -118,7 +125,7 @@ Sources/
 └── cofre-selftest/  # tests + benchmark
 ```
 
-Releases are built by GitHub Actions: push a `v*` tag and `Cofre.zip` gets attached to a new release.
+Releases are built by GitHub Actions: push a `v*` tag and `Cofre.dmg` (plus a `.zip`) gets attached to a new release.
 
 ## Roadmap ideas
 
