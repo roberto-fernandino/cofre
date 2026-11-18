@@ -1,0 +1,179 @@
+import CryptoKit
+import Foundation
+
+/// Erros do formato .cofre.
+public enum CofreError: LocalizedError, Equatable {
+    case notCofreFile
+    case unsupportedVersion(UInt8)
+    case authenticationFailed
+    case isDirectory
+    case invalidRecoveryKey
+
+    public var errorDescription: String? {
+        switch self {
+        case .notCofreFile: return "Não é um arquivo .cofre válido."
+        case .unsupportedVersion(let v): return "Versão de arquivo não suportada (\(v))."
+        case .authenticationFailed: return "Chave errada ou arquivo corrompido/alterado."
+        case .isDirectory: return "Pastas não são suportadas — compacte em .zip antes."
+        case .invalidRecoveryKey: return "Chave de recuperação inválida."
+        }
+    }
+}
+
+/// Formato (v1):
+///
+///     header = "COFRE\0" | versão (1 byte) | tamanho do bloco (UInt32 BE) | salt (32 bytes)
+///     corpo  = blocos AES-256-GCM: ciphertext | tag(16)
+///
+/// - A chave de cada arquivo é HKDF-SHA256(chave mestra, salt aleatório), então nunca se repete.
+/// - Nonce de cada bloco = contador (11 bytes BE) | flag de último bloco (1 byte),
+///   o que impede reordenar, remover ou truncar blocos sem ser detectado.
+/// - O header inteiro entra como dado autenticado (AAD) em todos os blocos.
+public struct CofreCipher: Sendable {
+    public static let fileExtension = "cofre"
+    public static let defaultChunkSize = 1 << 20 // 1 MiB
+
+    static let magic: [UInt8] = Array("COFRE".utf8) + [0]
+    static let version: UInt8 = 1
+    static let saltSize = 32
+    static let tagSize = 16
+    static let headerSize = magic.count + 1 + 4 + saltSize
+    static let maxChunkSize = 64 << 20
+
+    private let masterKey: SymmetricKey
+
+    public init(masterKey: SymmetricKey) {
+        self.masterKey = masterKey
+    }
+
+    // MARK: - Criptografar
+
+    public func encrypt(
+        from input: URL,
+        to output: URL,
+        chunkSize: Int = CofreCipher.defaultChunkSize,
+        progress: ((Int64) -> Void)? = nil
+    ) throws {
+        precondition(chunkSize > 0 && chunkSize <= Self.maxChunkSize)
+        let reader = try FileHandle(forReadingFrom: input)
+        defer { try? reader.close() }
+        let writer = try Self.createWriter(at: output)
+        defer { try? writer.close() }
+
+        var salt = Data(count: Self.saltSize)
+        salt.withUnsafeMutableBytes { _ = SecRandomCopyBytes(kSecRandomDefault, Self.saltSize, $0.baseAddress!) }
+
+        var header = Data(Self.magic)
+        header.append(Self.version)
+        header.append(contentsOf: withUnsafeBytes(of: UInt32(chunkSize).bigEndian, Array.init))
+        header.append(salt)
+        try writer.write(contentsOf: header)
+
+        let key = fileKey(salt: salt)
+        var counter: UInt64 = 0
+        var processed: Int64 = 0
+        var current = try reader.read(upToCount: chunkSize) ?? Data()
+
+        while true {
+            let next = try reader.read(upToCount: chunkSize) ?? Data()
+            let isFinal = next.isEmpty
+            try autoreleasepool {
+                let box = try AES.GCM.seal(current, using: key, nonce: Self.nonce(counter, final: isFinal), authenticating: header)
+                try writer.write(contentsOf: box.ciphertext)
+                try writer.write(contentsOf: box.tag)
+            }
+            processed += Int64(current.count)
+            progress?(processed)
+            if isFinal { break }
+            current = next
+            counter += 1
+        }
+        try writer.synchronize()
+    }
+
+    // MARK: - Descriptografar
+
+    public func decrypt(
+        from input: URL,
+        to output: URL,
+        progress: ((Int64) -> Void)? = nil
+    ) throws {
+        let reader = try FileHandle(forReadingFrom: input)
+        defer { try? reader.close() }
+
+        guard let header = try reader.read(upToCount: Self.headerSize),
+              header.count == Self.headerSize,
+              Array(header.prefix(Self.magic.count)) == Self.magic
+        else { throw CofreError.notCofreFile }
+
+        let version = header[Self.magic.count]
+        guard version == Self.version else { throw CofreError.unsupportedVersion(version) }
+
+        let sizeStart = Self.magic.count + 1
+        let chunkSize = Int(header[sizeStart..<sizeStart + 4].reduce(UInt32(0)) { $0 << 8 | UInt32($1) })
+        guard chunkSize > 0, chunkSize <= Self.maxChunkSize else { throw CofreError.notCofreFile }
+        let salt = header.suffix(Self.saltSize)
+
+        let writer = try Self.createWriter(at: output)
+        defer { try? writer.close() }
+
+        let key = fileKey(salt: Data(salt))
+        let sealedChunk = chunkSize + Self.tagSize
+        var counter: UInt64 = 0
+        var processed: Int64 = 0
+        var current = try reader.read(upToCount: sealedChunk) ?? Data()
+
+        while true {
+            let next = try reader.read(upToCount: sealedChunk) ?? Data()
+            let isFinal = next.isEmpty
+            guard current.count >= Self.tagSize, isFinal || current.count == sealedChunk else {
+                throw CofreError.authenticationFailed
+            }
+            try autoreleasepool {
+                let box = try AES.GCM.SealedBox(
+                    nonce: Self.nonce(counter, final: isFinal),
+                    ciphertext: current.prefix(current.count - Self.tagSize),
+                    tag: current.suffix(Self.tagSize)
+                )
+                let plain: Data
+                do {
+                    plain = try AES.GCM.open(box, using: key, authenticating: header)
+                } catch {
+                    throw CofreError.authenticationFailed
+                }
+                try writer.write(contentsOf: plain)
+                processed += Int64(plain.count)
+            }
+            progress?(processed)
+            if isFinal { break }
+            current = next
+            counter += 1
+        }
+        try writer.synchronize()
+    }
+
+    // MARK: - Internos
+
+    private func fileKey(salt: Data) -> SymmetricKey {
+        HKDF<SHA256>.deriveKey(
+            inputKeyMaterial: masterKey,
+            salt: salt,
+            info: Data("cofre v1 file key".utf8),
+            outputByteCount: 32
+        )
+    }
+
+    static func nonce(_ counter: UInt64, final: Bool) -> AES.GCM.Nonce {
+        var bytes = [UInt8](repeating: 0, count: 12)
+        withUnsafeBytes(of: counter.bigEndian) { bytes.replaceSubrange(3..<11, with: $0) }
+        bytes[11] = final ? 1 : 0
+        return try! AES.GCM.Nonce(data: bytes)
+    }
+
+    private static func createWriter(at url: URL) throws -> FileHandle {
+        guard FileManager.default.createFile(atPath: url.path, contents: nil, attributes: [.posixPermissions: 0o600]) else {
+            throw CocoaError(.fileWriteUnknown, userInfo: [NSFilePathErrorKey: url.path])
+        }
+        return try FileHandle(forWritingTo: url)
+    }
+}
