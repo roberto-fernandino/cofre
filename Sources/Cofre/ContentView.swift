@@ -9,7 +9,7 @@ struct ContentView: View {
         VStack(spacing: 14) {
             dropZone
 
-            Toggle("Apagar o arquivo original depois de processar", isOn: $model.deleteOriginal)
+            Toggle("Delete the original file after processing", isOn: $model.deleteOriginal)
                 .toggleStyle(.checkbox)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -40,7 +40,7 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Partes
+    // MARK: - Sections
 
     private var dropZone: some View {
         ZStack {
@@ -54,7 +54,7 @@ struct ContentView: View {
                 if model.busy {
                     ProgressView(value: model.progress)
                         .frame(width: 220)
-                    Text(model.currentName.isEmpty ? "Aguardando digital…" : model.currentName)
+                    Text(model.currentName.isEmpty ? String(localized: "Waiting for Touch ID…") : model.currentName)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -64,12 +64,12 @@ struct ContentView: View {
                     Image(systemName: "touchid")
                         .font(.system(size: 44, weight: .light))
                         .foregroundStyle(targeted ? Color.accentColor : .secondary)
-                    Text("Solte arquivos aqui")
+                    Text("Drop files here")
                         .font(.title3.weight(.semibold))
-                    Text("Arquivos **.cofre** são abertos; os demais, trancados.")
+                    Text("**.cofre** files get unlocked. Everything else gets locked.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                    Button("Escolher arquivos…") { model.openPanel() }
+                    Button("Choose Files…") { model.openPanel() }
                         .padding(.top, 2)
                 }
             }
@@ -87,15 +87,15 @@ struct ContentView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Guarde sua chave de recuperação")
+                Text("Back up your recovery key")
                     .font(.callout.weight(.semibold))
-                Text("A chave só existe no Keychain deste Mac. Se ele se perder, os arquivos .cofre não abrem mais sem ela.")
+                Text("The key only lives in this Mac's Keychain. If it's lost, your .cofre files can't be opened without it.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
-            Button("Mostrar") { model.exportRecoveryKey() }
+            Button("Show") { model.exportRecoveryKey() }
         }
         .padding(10)
         .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
@@ -104,7 +104,7 @@ struct ContentView: View {
     private var logList: some View {
         Group {
             if model.log.isEmpty {
-                Text("Nada processado ainda.")
+                Text("Nothing processed yet.")
                     .font(.callout)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -150,7 +150,7 @@ private struct LogRow: View {
                     Image(systemName: "magnifyingglass")
                 }
                 .buttonStyle(.borderless)
-                .help("Mostrar no Finder")
+                .help("Show in Finder")
             }
         }
         .padding(.vertical, 2)
@@ -182,9 +182,9 @@ private struct RecoveryKeySheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Chave de recuperação", systemImage: "key.fill")
+            Label("Recovery Key", systemImage: "key.fill")
                 .font(.title3.weight(.semibold))
-            Text("Guarde isto num gerenciador de senhas (1Password, Senhas da Apple…). Quem tiver esta chave abre qualquer arquivo .cofre seu — não compartilhe.")
+            Text("Store this in a password manager (1Password, Apple Passwords…). Anyone with this key can open any of your .cofre files — never share it.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -195,13 +195,15 @@ private struct RecoveryKeySheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
             HStack {
-                Button(copied ? "Copiada ✓" : "Copiar") {
+                Button {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(key, forType: .string)
                     copied = true
+                } label: {
+                    copied ? Text("Copied ✓") : Text("Copy")
                 }
                 Spacer()
-                Button("Já guardei") { onDone() }
+                Button("I've Saved It") { onDone() }
                     .keyboardShortcut(.defaultAction)
             }
         }
@@ -218,9 +220,9 @@ private struct ImportKeySheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Importar chave de recuperação", systemImage: "key.horizontal.fill")
+            Label("Import Recovery Key", systemImage: "key.horizontal.fill")
                 .font(.title3.weight(.semibold))
-            Text("Use isto num Mac novo, para abrir arquivos criados com uma chave antiga. A chave atual deste Mac será substituída.")
+            Text("Use this on a new Mac to open files locked with an older key. This Mac's current key will be replaced.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -229,19 +231,19 @@ private struct ImportKeySheet: View {
                 .textFieldStyle(.roundedBorder)
             HStack {
                 Spacer()
-                Button("Cancelar", role: .cancel) { onCancel() }
+                Button("Cancel", role: .cancel) { onCancel() }
                     .keyboardShortcut(.cancelAction)
-                Button("Importar") { confirming = true }
+                Button("Import") { confirming = true }
                     .keyboardShortcut(.defaultAction)
                     .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
         .padding(20)
         .frame(width: 440)
-        .confirmationDialog("Substituir a chave atual?", isPresented: $confirming) {
-            Button("Substituir", role: .destructive) { onImport(text) }
+        .confirmationDialog("Replace the current key?", isPresented: $confirming) {
+            Button("Replace", role: .destructive) { onImport(text) }
         } message: {
-            Text("Arquivos trancados com a chave atual só abrirão de novo se você tiver a chave de recuperação dela.")
+            Text("Files locked with the current key will only open again if you have its recovery key.")
         }
     }
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Compila o Cofre.app. Uso: ./build.sh            → build/Cofre.app
-#                          ./build.sh --install  → também copia para ~/Applications
+# Builds Cofre.app.  ./build.sh            → build/Cofre.app
+#                    ./build.sh --install  → also copies it to ~/Applications
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -11,6 +11,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Cofre "$APP/Contents/MacOS/Cofre"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp -R Resources/*.lproj "$APP/Contents/Resources/"
 
 ICONSET=build/AppIcon.iconset
 if [[ ! -f build/AppIcon.icns ]]; then
@@ -28,5 +29,5 @@ if [[ "${1:-}" == "--install" ]]; then
   rm -rf "$HOME/Applications/Cofre.app"
   cp -R "$APP" "$HOME/Applications/Cofre.app"
   /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$HOME/Applications/Cofre.app"
-  echo "Instalado → ~/Applications/Cofre.app"
+  echo "Installed → ~/Applications/Cofre.app"
 fi

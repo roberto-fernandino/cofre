@@ -4,8 +4,8 @@ import Foundation
 import LocalAuthentication
 import Security
 
-/// Guarda a chave mestra (256 bits) no Keychain do usuário, só neste Mac (sem iCloud),
-/// e só a lê depois de Touch ID (ou senha do Mac, se o sensor não estiver disponível).
+/// Keeps the 256-bit master key in the user's login Keychain (this Mac only, never iCloud)
+/// and only reads it after Touch ID (or the Mac password when the sensor isn't available).
 enum KeyStore {
     private static let service = "Cofre"
     private static let account = "master-key-v1"
@@ -15,16 +15,16 @@ enum KeyStore {
         var errorDescription: String? {
             switch self {
             case .keychain(let s):
-                let msg = SecCopyErrorMessageString(s, nil) as String? ?? "erro \(s)"
+                let msg = SecCopyErrorMessageString(s, nil) as String? ?? "OSStatus \(s)"
                 return "Keychain: \(msg)"
             }
         }
     }
 
-    /// Pede a digital. `.deviceOwnerAuthentication` = Touch ID, com a senha do Mac como alternativa.
+    /// `.deviceOwnerAuthentication` = Touch ID, with the Mac password as fallback.
     static func authenticate(reason: String) async throws {
         let context = LAContext()
-        context.localizedCancelTitle = "Cancelar"
+        context.localizedCancelTitle = String(localized: "Cancel")
         try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
     }
 
@@ -32,7 +32,7 @@ enum KeyStore {
         (try? read()) != nil
     }
 
-    /// Lê a chave; se ainda não existir, cria uma nova. Só chame depois de `authenticate`.
+    /// Reads the key, creating one on first use. Only call after `authenticate`.
     static func loadOrCreate() throws -> (key: SymmetricKey, created: Bool) {
         if let key = try read() { return (key, false) }
         let key = SymmetricKey(size: .bits256)
@@ -71,7 +71,7 @@ enum KeyStore {
     private static func write(_ key: SymmetricKey) throws {
         var item = baseQuery
         item[kSecValueData as String] = key.withUnsafeBytes { Data($0) }
-        item[kSecAttrLabel as String] = "Cofre — chave mestra"
+        item[kSecAttrLabel as String] = "Cofre — master key"
         item[kSecAttrSynchronizable as String] = false
         let status = SecItemAdd(item as CFDictionary, nil)
         guard status == errSecSuccess else { throw Failure.keychain(status) }

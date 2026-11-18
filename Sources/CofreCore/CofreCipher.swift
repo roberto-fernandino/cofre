@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 
-/// Erros do formato .cofre.
+/// Errors of the .cofre format.
 public enum CofreError: LocalizedError, Equatable {
     case notCofreFile
     case unsupportedVersion(UInt8)
@@ -11,24 +11,24 @@ public enum CofreError: LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .notCofreFile: return "Não é um arquivo .cofre válido."
-        case .unsupportedVersion(let v): return "Versão de arquivo não suportada (\(v))."
-        case .authenticationFailed: return "Chave errada ou arquivo corrompido/alterado."
-        case .isDirectory: return "Pastas não são suportadas — compacte em .zip antes."
-        case .invalidRecoveryKey: return "Chave de recuperação inválida."
+        case .notCofreFile: return String(localized: "Not a valid .cofre file.")
+        case .unsupportedVersion(let v): return String(localized: "Unsupported file version (\(Int(v))).")
+        case .authenticationFailed: return String(localized: "Wrong key, or the file is corrupted or was tampered with.")
+        case .isDirectory: return String(localized: "Folders aren't supported — zip them first.")
+        case .invalidRecoveryKey: return String(localized: "Invalid recovery key.")
         }
     }
 }
 
-/// Formato (v1):
+/// File format (v1):
 ///
-///     header = "COFRE\0" | versão (1 byte) | tamanho do bloco (UInt32 BE) | salt (32 bytes)
-///     corpo  = blocos AES-256-GCM: ciphertext | tag(16)
+///     header = "COFRE\0" | version (1 byte) | chunk size (UInt32 BE) | salt (32 bytes)
+///     body   = AES-256-GCM chunks: ciphertext | tag(16)
 ///
-/// - A chave de cada arquivo é HKDF-SHA256(chave mestra, salt aleatório), então nunca se repete.
-/// - Nonce de cada bloco = contador (11 bytes BE) | flag de último bloco (1 byte),
-///   o que impede reordenar, remover ou truncar blocos sem ser detectado.
-/// - O header inteiro entra como dado autenticado (AAD) em todos os blocos.
+/// - Every file gets its own key: HKDF-SHA256(master key, random salt). Keys never repeat.
+/// - Chunk nonce = counter (11 bytes BE) | last-chunk flag (1 byte), so chunks can't be
+///   reordered, dropped or truncated without detection (STREAM-style construction).
+/// - The whole header is authenticated (AAD) in every chunk.
 public struct CofreCipher: Sendable {
     public static let fileExtension = "cofre"
     public static let defaultChunkSize = 1 << 20 // 1 MiB
@@ -46,7 +46,7 @@ public struct CofreCipher: Sendable {
         self.masterKey = masterKey
     }
 
-    // MARK: - Criptografar
+    // MARK: - Encrypt
 
     public func encrypt(
         from input: URL,
@@ -91,7 +91,7 @@ public struct CofreCipher: Sendable {
         try writer.synchronize()
     }
 
-    // MARK: - Descriptografar
+    // MARK: - Decrypt
 
     public func decrypt(
         from input: URL,
@@ -152,7 +152,7 @@ public struct CofreCipher: Sendable {
         try writer.synchronize()
     }
 
-    // MARK: - Internos
+    // MARK: - Internals
 
     private func fileKey(salt: Data) -> SymmetricKey {
         HKDF<SHA256>.deriveKey(

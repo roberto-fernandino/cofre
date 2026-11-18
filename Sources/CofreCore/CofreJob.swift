@@ -10,9 +10,8 @@ public struct CofreResult: Sendable {
     public let output: URL
 }
 
-/// Decide o que fazer com um arquivo: `.cofre` → descriptografa; qualquer outro → criptografa.
-/// Escreve num arquivo temporário na mesma pasta e só renomeia no final, para nunca deixar
-/// um resultado pela metade.
+/// `.cofre` files are decrypted, anything else is encrypted. Output goes to a temp file in the
+/// same folder and is renamed only when complete, so a half-written result never appears.
 public enum CofreJob {
     public static func process(
         _ url: URL,
@@ -52,7 +51,7 @@ public enum CofreJob {
         }
     }
 
-    /// `foo.txt` → `foo (1).txt`, `foo (2).txt`… se já existir.
+    /// `foo.txt` → `foo (1).txt`, `foo (2).txt`… when the name is taken.
     static func uniqueURL(_ url: URL) -> URL {
         let fm = FileManager.default
         guard fm.fileExists(atPath: url.path) else { return url }
@@ -69,7 +68,7 @@ public enum CofreJob {
     }
 }
 
-/// Representação textual da chave mestra para backup: `cofre1:<base64>`.
+/// Text form of the master key for backups: `cofre1:<base64>`.
 public enum RecoveryKey {
     static let prefix = "cofre1:"
 

@@ -1,0 +1,57 @@
+/* Core */
+"Not a valid .cofre file." = "Não é um arquivo .cofre válido.";
+"Unsupported file version (%lld)." = "Versão de arquivo não suportada (%lld).";
+"Wrong key, or the file is corrupted or was tampered with." = "Chave errada, ou o arquivo está corrompido ou foi alterado.";
+"Folders aren't supported — zip them first." = "Pastas não são suportadas — compacte em .zip antes.";
+"Invalid recovery key." = "Chave de recuperação inválida.";
+"Cancel" = "Cancelar";
+
+/* Model */
+"Please wait" = "Aguarde";
+"Still processing the previous batch." = "Ainda processando o lote anterior.";
+"Key created" = "Chave criada";
+"New master key saved to the Keychain. Back up your recovery key!" = "Nova chave mestra guardada no Keychain. Guarde sua chave de recuperação!";
+"Not authorized" = "Não autorizado";
+"Encrypted" = "Criptografado";
+"Decrypted" = "Descriptografado";
+"Process" = "Processar";
+"show your recovery key" = "mostrar sua chave de recuperação";
+"Export cancelled" = "Exportação cancelada";
+"Import failed" = "Falha na importação";
+"replace the Cofre key" = "substituir a chave do Cofre";
+"Key imported" = "Chave importada";
+"The recovery key is now the active key." = "A chave de recuperação agora é a chave ativa.";
+"%lld files" = "%lld arquivos";
+"decrypt %@" = "descriptografar %@";
+"encrypt %@" = "criptografar %@";
+"process %@" = "processar %@";
+"Cancelled." = "Cancelado.";
+"Fingerprint not recognized." = "Digital não reconhecida.";
+"Touch ID is locked — use your Mac password." = "Touch ID bloqueado — use a senha do Mac.";
+
+/* UI */
+"Open Files…" = "Abrir arquivos…";
+"Key" = "Chave";
+"Show Recovery Key…" = "Mostrar chave de recuperação…";
+"Import Recovery Key…" = "Importar chave de recuperação…";
+"Delete the original file after processing" = "Apagar o arquivo original depois de processar";
+"Waiting for Touch ID…" = "Aguardando digital…";
+"Drop files here" = "Solte arquivos aqui";
+"**.cofre** files get unlocked. Everything else gets locked." = "Arquivos **.cofre** são abertos; os demais, trancados.";
+"Choose Files…" = "Escolher arquivos…";
+"Back up your recovery key" = "Guarde sua chave de recuperação";
+"The key only lives in this Mac's Keychain. If it's lost, your .cofre files can't be opened without it." = "A chave só existe no Keychain deste Mac. Se ele se perder, os arquivos .cofre não abrem mais sem ela.";
+"Show" = "Mostrar";
+"Nothing processed yet." = "Nada processado ainda.";
+"Show in Finder" = "Mostrar no Finder";
+"Recovery Key" = "Chave de recuperação";
+"Store this in a password manager (1Password, Apple Passwords…). Anyone with this key can open any of your .cofre files — never share it." = "Guarde isto num gerenciador de senhas (1Password, Senhas da Apple…). Quem tiver esta chave abre qualquer arquivo .cofre seu — nunca compartilhe.";
+"Copied ✓" = "Copiada ✓";
+"Copy" = "Copiar";
+"I've Saved It" = "Já guardei";
+"Import Recovery Key" = "Importar chave de recuperação";
+"Use this on a new Mac to open files locked with an older key. This Mac's current key will be replaced." = "Use isto num Mac novo, para abrir arquivos trancados com uma chave antiga. A chave atual deste Mac será substituída.";
+"Import" = "Importar";
+"Replace the current key?" = "Substituir a chave atual?";
+"Replace" = "Substituir";
+"Files locked with the current key will only open again if you have its recovery key." = "Arquivos trancados com a chave atual só abrirão de novo se você tiver a chave de recuperação dela.";

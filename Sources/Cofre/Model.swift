@@ -36,13 +36,14 @@ final class Model: ObservableObject {
         recoveryExported = UserDefaults.standard.bool(forKey: "recoveryExported")
     }
 
-    // MARK: - Processar arquivos
+    // MARK: - Processing
 
+    /// One Touch ID prompt per batch, then every file is processed off the main thread.
     func process(_ urls: [URL]) {
         let urls = urls.filter { $0.isFileURL }
         guard !urls.isEmpty else { return }
         guard !busy else {
-            append(.info, "Aguarde", "Ainda processando o lote anterior.", nil)
+            append(.info, String(localized: "Please wait"), String(localized: "Still processing the previous batch."), nil)
             return
         }
         busy = true
@@ -56,12 +57,13 @@ final class Model: ObservableObject {
                 try await KeyStore.authenticate(reason: reason(for: urls))
                 let (key, created) = try KeyStore.loadOrCreate()
                 if created {
-                    append(.info, "Chave criada", "Nova chave mestra guardada no Keychain. Exporte a chave de recuperação!", nil)
+                    append(.info, String(localized: "Key created"),
+                           String(localized: "New master key saved to the Keychain. Back up your recovery key!"), nil)
                     recoveryExported = false
                 }
                 cipher = CofreCipher(masterKey: key)
             } catch {
-                append(.failed, "Não autorizado", Self.describe(error), nil)
+                append(.failed, String(localized: "Not authorized"), Self.describe(error), nil)
                 return
             }
 
@@ -79,7 +81,7 @@ final class Model: ObservableObject {
                     let enc = result.action == .encrypted
                     append(enc ? .encrypted : .decrypted,
                            result.output.lastPathComponent,
-                           enc ? "Criptografado" : "Descriptografado",
+                           enc ? String(localized: "Encrypted") : String(localized: "Decrypted"),
                            result.output)
                 } catch {
                     append(.failed, url.lastPathComponent, Self.describe(error), url)
@@ -94,20 +96,20 @@ final class Model: ObservableObject {
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        panel.prompt = "Processar"
+        panel.prompt = String(localized: "Process")
         if panel.runModal() == .OK { process(panel.urls) }
     }
 
-    // MARK: - Chave de recuperação
+    // MARK: - Recovery key
 
     func exportRecoveryKey() {
         Task {
             do {
-                try await KeyStore.authenticate(reason: "mostrar sua chave de recuperação")
+                try await KeyStore.authenticate(reason: String(localized: "show your recovery key"))
                 let (key, _) = try KeyStore.loadOrCreate()
                 recoveryKeyShown = RecoveryKey.encode(key)
             } catch {
-                append(.failed, "Exportação cancelada", Self.describe(error), nil)
+                append(.failed, String(localized: "Export cancelled"), Self.describe(error), nil)
             }
         }
     }
@@ -115,30 +117,31 @@ final class Model: ObservableObject {
     func importRecoveryKey(_ text: String) {
         let key: SymmetricKey
         do { key = try RecoveryKey.decode(text) } catch {
-            append(.failed, "Importação", Self.describe(error), nil)
+            append(.failed, String(localized: "Import failed"), Self.describe(error), nil)
             return
         }
         Task {
             do {
-                try await KeyStore.authenticate(reason: "substituir a chave do Cofre")
+                try await KeyStore.authenticate(reason: String(localized: "replace the Cofre key"))
                 try KeyStore.replace(with: key)
                 recoveryExported = true
-                append(.info, "Chave importada", "A chave de recuperação agora é a chave ativa.", nil)
+                append(.info, String(localized: "Key imported"),
+                       String(localized: "The recovery key is now the active key."), nil)
             } catch {
-                append(.failed, "Importação", Self.describe(error), nil)
+                append(.failed, String(localized: "Import failed"), Self.describe(error), nil)
             }
         }
     }
 
     // MARK: - Helpers
 
+    /// Shown by macOS as "Cofre is trying to <reason>."
     private func reason(for urls: [URL]) -> String {
-        let decrypting = urls.allSatisfy { $0.pathExtension.lowercased() == CofreCipher.fileExtension }
-        let encrypting = urls.allSatisfy { $0.pathExtension.lowercased() != CofreCipher.fileExtension }
-        let what = urls.count == 1 ? "“\(urls[0].lastPathComponent)”" : "\(urls.count) arquivos"
-        if decrypting { return "descriptografar \(what)" }
-        if encrypting { return "criptografar \(what)" }
-        return "processar \(what)"
+        let isCofre: (URL) -> Bool = { $0.pathExtension.lowercased() == CofreCipher.fileExtension }
+        let what = urls.count == 1 ? "“\(urls[0].lastPathComponent)”" : String(localized: "\(urls.count) files")
+        if urls.allSatisfy(isCofre) { return String(localized: "decrypt \(what)") }
+        if !urls.contains(where: isCofre) { return String(localized: "encrypt \(what)") }
+        return String(localized: "process \(what)")
     }
 
     private func append(_ kind: LogEntry.Kind, _ title: String, _ detail: String, _ url: URL?) {
@@ -149,9 +152,9 @@ final class Model: ObservableObject {
     private static func describe(_ error: Error) -> String {
         if let la = error as? LAError {
             switch la.code {
-            case .userCancel, .appCancel, .systemCancel: return "Cancelado."
-            case .authenticationFailed: return "Digital não reconhecida."
-            case .biometryLockout: return "Touch ID bloqueado — use a senha do Mac."
+            case .userCancel, .appCancel, .systemCancel: return String(localized: "Cancelled.")
+            case .authenticationFailed: return String(localized: "Fingerprint not recognized.")
+            case .biometryLockout: return String(localized: "Touch ID is locked — use your Mac password.")
             default: break
             }
         }

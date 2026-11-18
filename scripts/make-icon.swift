@@ -1,4 +1,4 @@
-// Gera AppIcon.icns: cadeado + digital sobre gradiente. Uso: swift scripts/make-icon.swift <saida.iconset>
+// Renders the app icon iconset. Usage: swift scripts/make-icon.swift <out.iconset>
 import AppKit
 
 let out = URL(fileURLWithPath: CommandLine.arguments[1])

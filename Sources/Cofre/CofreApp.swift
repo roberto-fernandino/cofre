@@ -14,19 +14,19 @@ struct CofreApp: App {
         .windowResizability(.contentSize)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("Abrir arquivos…") { model.openPanel() }
+                Button("Open Files…") { model.openPanel() }
                     .keyboardShortcut("o")
             }
-            CommandMenu("Chave") {
-                Button("Mostrar chave de recuperação…") { model.exportRecoveryKey() }
-                Button("Importar chave de recuperação…") { model.showImport = true }
+            CommandMenu("Key") {
+                Button("Show Recovery Key…") { model.exportRecoveryKey() }
+                Button("Import Recovery Key…") { model.showImport = true }
             }
         }
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// Arquivos soltos no ícone do Dock, "Abrir com" do Finder ou duplo clique num .cofre.
+    /// Files dropped on the Dock icon, "Open With" in Finder, or a double-clicked .cofre file.
     func application(_ application: NSApplication, open urls: [URL]) {
         Task { @MainActor in Model.shared.process(urls) }
     }
